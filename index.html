@@ -1492,5 +1492,615 @@ function launchConfetti() {
   }
 }
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  🃏 FLASH CARD PRACTICE                                        -->
+<!--  Self-contained add-on: own colours, own fonts, own show/hide  -->
+<!--  rules, own injected tab button. Reads nothing from the code   -->
+<!--  above it, so it can be lifted out cleanly at any time.        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
+
+  /* Panel visibility is self-governed (#id beats .panel, so this wins
+     whether or not the page's own .panel rules are present) */
+  #panel-fc { display: none; }
+  #panel-fc.active { display: block; }
+
+  #tab-fc { background: #4FC3F7; color: #1A237E; }
+
+  .fc-shell {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.10);
+    max-width: 680px;
+    margin: 0 auto 20px;
+    font-family: 'Nunito', sans-serif;
+  }
+
+  .fc-heading {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    color: #1A237E;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .fc-blurb {
+    text-align: center;
+    font-weight: 700;
+    color: #555;
+    font-size: .95rem;
+    margin: 4px 0 14px;
+  }
+  .fc-pick-label {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.05rem;
+    color: #607D8B;
+    text-align: center;
+    margin: 14px 0 8px;
+  }
+
+  /* ── 0–12 number picker ── */
+  .fc-numgrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin: 10px 0 4px;
+  }
+  @media (max-width: 520px) { .fc-numgrid { grid-template-columns: repeat(5, 1fr); } }
+
+  .fc-num {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    padding: 16px 4px;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    color: #ffffff;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.28);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.22);
+    transition: transform .1s, box-shadow .1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fc-num:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.22); }
+  .fc-num.fc-selected {
+    outline: 4px solid #1A237E;
+    outline-offset: 2px;
+    transform: scale(1.10);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+  }
+
+  .fc-chosen-label {
+    text-align: center;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.15rem;
+    color: #1A237E;
+    margin: 14px 0 8px;
+    min-height: 30px;
+  }
+
+  /* ── Settings ── */
+  .fc-settings {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 14px 0 4px;
+  }
+  .fc-settings label { font-weight: 800; color: #1A237E; font-size: .95rem; }
+  .fc-settings select {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    border: 3px solid #ddd;
+    border-radius: 12px;
+    padding: 6px 12px;
+    outline: none;
+    cursor: pointer;
+    color: #1A237E;
+    background: #fff;
+  }
+
+  /* ── Buttons ── */
+  .fc-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    padding: 14px 36px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    display: block;
+    margin: 14px auto 4px;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+    transition: transform .1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fc-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+  .fc-btn-go    { background: #4FC3F7; color: #1A237E; }
+  .fc-btn-sun   { background: #FFD600; color: #1A237E; }
+  .fc-btn-small { font-size: 1rem; padding: 9px 24px; box-shadow: 0 3px 0 rgba(0,0,0,0.12); display: inline-block; margin: 0; }
+  .fc-btn-grey  { background: #eeeeee; color: #555; }
+  .fc-btn-disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ── The card ── */
+  .fc-stage {
+    background: #ffffff;
+    border: 5px solid #eceff1;
+    border-radius: 28px;
+    padding: 26px 16px 20px;
+    margin: 10px auto 6px;
+    max-width: 520px;
+    text-align: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+  }
+
+  .fc-problem {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(3.4rem, 13vw, 6rem);
+    color: #1A237E;
+    line-height: 1.05;
+    letter-spacing: 2px;
+  }
+
+  .fc-slot {
+    min-height: 122px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  /* placeholder while he's thinking / shouting */
+  .fc-waiting {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2.6rem, 9vw, 4rem);
+    color: #B0BEC5;
+    background: #F4F7F9;
+    border: 4px dashed #CFD8DC;
+    border-radius: 22px;
+    padding: 8px 48px;
+    letter-spacing: 8px;
+  }
+
+  /* the reveal — green box, white number */
+  .fc-answer {
+    background: #2E7D32;
+    color: #FFFFFF !important;
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(3rem, 11vw, 5rem);
+    border-radius: 22px;
+    padding: 10px 48px;
+    box-shadow: 0 6px 0 #1B5E20, 0 0 0 5px rgba(46,125,50,0.20);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    letter-spacing: 3px;
+    animation: fcPop .22s cubic-bezier(.2,1.6,.5,1);
+  }
+  @keyframes fcPop {
+    0%   { transform: scale(.5); opacity: 0; }
+    100% { transform: scale(1);  opacity: 1; }
+  }
+
+  .fc-pacewrap {
+    background: #eceff1;
+    border-radius: 50px;
+    height: 14px;
+    max-width: 520px;
+    margin: 8px auto 12px;
+    overflow: hidden;
+  }
+  .fc-pace {
+    height: 100%;
+    width: 0%;
+    border-radius: 50px;
+    background: #4FC3F7;
+    transition: background .15s;
+  }
+  .fc-pace.fc-revealed { background: #2E7D32; }
+
+  .fc-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 520px;
+    margin: 0 auto 6px;
+    font-family: 'Fredoka One', cursive;
+    color: #1A237E;
+    font-size: 1.1rem;
+  }
+  .fc-topline .fc-sub { color: #90A4AE; font-size: .95rem; }
+
+  .fc-deckwrap {
+    background: #eceff1;
+    border-radius: 50px;
+    height: 10px;
+    max-width: 520px;
+    margin: 4px auto 14px;
+    overflow: hidden;
+  }
+  .fc-deck {
+    height: 100%;
+    width: 0%;
+    border-radius: 50px;
+    background: linear-gradient(90deg, #FFD600, #FF7043);
+    transition: width .3s ease;
+  }
+
+  .fc-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+
+  .fc-paused {
+    font-family: 'Fredoka One', cursive;
+    color: #FF7043;
+    font-size: 1.1rem;
+    text-align: center;
+    min-height: 24px;
+    margin-top: 4px;
+  }
+
+  /* ── Done screen ── */
+  .fc-done-emoji { font-size: 4.5rem; display: block; margin: 6px auto; }
+  .fc-done-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2rem;
+    color: #1A237E;
+    text-align: center;
+    margin: 6px 0 12px;
+  }
+  .fc-stats { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; margin: 14px 0; }
+  .fc-stat { background: #E3F2FD; border-radius: 18px; padding: 14px 22px; text-align: center; }
+  .fc-stat b {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.2rem;
+    color: #1A237E;
+    display: block;
+    font-weight: 400;
+  }
+  .fc-stat span { font-size: .8rem; color: #666; font-weight: 700; }
+</style>
+
+<!-- ══════════════ PANEL ══════════════ -->
+<div class="panel" id="panel-fc">
+
+  <!-- SETUP -->
+  <div class="fc-shell" id="fc-setup">
+    <div class="fc-heading">🃏 Flash Card Practice</div>
+    <div class="fc-blurb">
+      No buttons, no typing. Say the answer out loud — the card reveals itself.<br>
+      Every fact from <b>×0 to ×12</b>, three times each.
+    </div>
+
+    <div class="fc-pick-label">Pick a number to drill:</div>
+    <div class="fc-numgrid" id="fc-numgrid"></div>
+
+    <div class="fc-chosen-label" id="fc-chosen">Choose a number above to get started! 👆</div>
+
+    <div class="fc-settings">
+      <label>Order:</label>
+      <select id="fc-order">
+        <option value="shuffle" selected>Shuffled</option>
+        <option value="order">In order (×0 → ×12)</option>
+      </select>
+      <label>Times each:</label>
+      <select id="fc-reps">
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="3" selected>3×</option>
+        <option value="5">5×</option>
+      </select>
+      <label>Pace:</label>
+      <select id="fc-pace-sel">
+        <option value="3000,4000">Slow (3s → 4s)</option>
+        <option value="2000,3000" selected>Normal (2s → 3s)</option>
+        <option value="1500,2000">Fast (1.5s → 2s)</option>
+        <option value="1000,1500">Lightning (1s → 1.5s)</option>
+      </select>
+    </div>
+
+    <button class="fc-btn fc-btn-go fc-btn-disabled" id="fc-start-btn" onclick="fcStart()">🃏 Start Flash Cards!</button>
+  </div>
+
+  <!-- RUNNING -->
+  <div class="fc-shell" id="fc-running" style="display:none;">
+    <div class="fc-topline">
+      <div id="fc-count-label">Card 1 of 39</div>
+      <div class="fc-sub" id="fc-table-label">7× table</div>
+    </div>
+    <div class="fc-deckwrap"><div class="fc-deck" id="fc-deck-bar"></div></div>
+
+    <div class="fc-stage">
+      <div class="fc-problem" id="fc-problem">7 × 4</div>
+      <div class="fc-slot" id="fc-slot"><div class="fc-waiting">? ? ?</div></div>
+    </div>
+    <div class="fc-pacewrap"><div class="fc-pace" id="fc-pace-bar"></div></div>
+
+    <div class="fc-paused" id="fc-paused-badge"></div>
+
+    <div class="fc-row">
+      <button class="fc-btn fc-btn-sun fc-btn-small" id="fc-pause-btn" onclick="fcTogglePause()">⏸ Pause</button>
+      <button class="fc-btn fc-btn-grey fc-btn-small" onclick="fcStop()">✖ Stop</button>
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div class="fc-shell" id="fc-done" style="display:none;">
+    <span class="fc-done-emoji">🧠</span>
+    <div class="fc-done-title" id="fc-done-title">Deck Complete!</div>
+    <div class="fc-stats">
+      <div class="fc-stat"><b id="fc-done-cards">39</b><span>CARDS SEEN</span></div>
+      <div class="fc-stat"><b id="fc-done-table">7×</b><span>TABLE</span></div>
+      <div class="fc-stat"><b id="fc-done-time">3:15</b><span>TIME IN THE ZONE</span></div>
+    </div>
+    <div class="fc-blurb">Ready to prove it? Take this table into the Blitz! ⚡</div>
+    <button class="fc-btn fc-btn-go"  onclick="fcStart()">🔄 Run It Again</button>
+    <button class="fc-btn fc-btn-sun" onclick="fcReset()">⚙️ Change Number</button>
+  </div>
+
+</div>
+
+<!-- ══════════════ LOGIC ══════════════ -->
+<script>
+// ============================================================
+//  FLASH CARD PRACTICE — fully self-contained (fc* namespace)
+//  Borrows nothing from the rest of the page.
+// ============================================================
+
+// Own palette — index 0 is the 0× table, 1–12 match the app's feel.
+const FC_PALETTE = [
+  '#78909C', // 0
+  '#FF7043', '#FF9800', '#FFB300', '#66BB6A', '#26C6DA', '#42A5F5',
+  '#AB47BC', '#EC407A', '#8D6E63', '#26A69A', '#5C6BC0', '#7CB342'
+];
+
+let fcNum       = null;
+let fcDeck      = [];
+let fcIdx       = 0;
+let fcElapsed   = 0;      // ms into the current card
+let fcThinkMs   = 2000;   // silent window — he shouts the answer here
+let fcRevealMs  = 3000;   // how long the green answer stays up
+let fcRevealed  = false;
+let fcPaused    = false;
+let fcInterval  = null;
+let fcCardsSeen = 0;
+const FC_TICK   = 50;
+
+function fcColor(n) { return FC_PALETTE[n] || '#78909C'; }
+
+// Pick navy or white for a label, whichever reads better on that colour
+function fcRelLum(hex) {
+  const c = [1, 3, 5].map(function (i) {
+    let v = parseInt(hex.substr(i, 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function fcTextOn(hex) {
+  const bg = fcRelLum(hex);
+  const onWhite = 1.05 / (bg + 0.05);
+  const onNavy  = (bg + 0.05) / (fcRelLum('#1A237E') + 0.05);
+  return onWhite >= onNavy ? '#FFFFFF' : '#1A237E';
+}
+function fcEl(id)   { return document.getElementById(id); }
+
+// ── Number picker (0–12) ──────────────────────────────────────
+function fcBuildNumGrid() {
+  const grid = fcEl('fc-numgrid');
+  if (!grid || grid.children.length) return;
+  for (let n = 0; n <= 12; n++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fc-num';
+    btn.textContent = n;
+    btn.style.background = fcColor(n);
+    btn.style.color = fcTextOn(fcColor(n));
+    btn.style.textShadow = fcTextOn(fcColor(n)) === '#FFFFFF'
+      ? '0 2px 3px rgba(0,0,0,0.30)' : '0 1px 0 rgba(255,255,255,0.45)';
+    btn.id = 'fc-num-' + n;
+    btn.onclick = function () { fcSelectNum(n); };
+    grid.appendChild(btn);
+  }
+}
+
+function fcSelectNum(n) {
+  fcNum = n;
+  const grid = fcEl('fc-numgrid');
+  if (grid) Array.prototype.forEach.call(grid.children, function (b) { b.classList.remove('fc-selected'); });
+  const btn = fcEl('fc-num-' + n);
+  if (btn) btn.classList.add('fc-selected');
+  fcUpdateChosenLabel();
+  const sb = fcEl('fc-start-btn');
+  if (sb) sb.classList.remove('fc-btn-disabled');
+}
+
+function fcUpdateChosenLabel() {
+  if (fcNum === null) return;
+  const reps = parseInt(fcEl('fc-reps').value);
+  fcEl('fc-chosen').innerHTML =
+    'Drilling the <b style="color:' + fcColor(fcNum) + '">' + fcNum + '× table</b> — ' +
+    (13 * reps) + ' cards (' + fcNum + '×0 through ' + fcNum + '×12, ' +
+    reps + ' time' + (reps > 1 ? 's' : '') + ' each)';
+}
+
+// ── Tab button: injected, so your markup stays untouched ──────
+function fcRegisterTab() {
+  if (fcEl('tab-fc')) return;
+  const tabs = document.querySelector('.tabs');
+  if (!tabs) return;
+  const btn = document.createElement('button');
+  btn.type        = 'button';
+  btn.className   = 'tab-btn';
+  btn.id          = 'tab-fc';
+  btn.textContent = '🃏 Flash Cards';
+  btn.onclick     = fcOpenTab;
+  tabs.appendChild(btn);
+}
+
+function fcOpenTab() {
+  if (typeof window.showTab === 'function') { window.showTab('fc'); return; }
+  // Fallback if the host page's tab switcher isn't there
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  fcEl('panel-fc').classList.add('active');
+  fcEl('tab-fc').classList.add('active');
+}
+
+// Wrap (not edit) the page's showTab so leaving the tab stops the loop
+function fcPatchShowTab() {
+  if (typeof window.showTab !== 'function' || window.showTab.__fcPatched) return;
+  const original = window.showTab;
+  const patched = function (name, highlightRow) {
+    if (name !== 'fc') fcHalt();
+    return original.apply(this, arguments);
+  };
+  patched.__fcPatched = true;
+  window.showTab = patched;
+}
+
+// ── Screens ───────────────────────────────────────────────────
+function fcShowScreen(id) {
+  ['fc-setup', 'fc-running', 'fc-done'].forEach(function (s) {
+    const el = fcEl(s);
+    if (el) el.style.display = 'none';
+  });
+  const target = fcEl(id);
+  if (target) target.style.display = 'block';
+}
+
+// ── Deck ──────────────────────────────────────────────────────
+function fcBuildDeck(n, reps, mode) {
+  const deck = [];
+  for (let r = 0; r < reps; r++) {
+    // one pass = ×0 … ×12, shuffled within the pass so repeats
+    // stay spaced out instead of clumping together
+    const pass = [];
+    for (let b = 0; b <= 12; b++) pass.push(b);
+    if (mode === 'shuffle') {
+      for (let i = pass.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = pass[i]; pass[i] = pass[j]; pass[j] = t;
+      }
+    }
+    pass.forEach(function (b) { deck.push({ a: n, b: b, answer: n * b }); });
+  }
+  return deck;
+}
+
+function fcStart() {
+  if (fcNum === null) {
+    fcEl('fc-chosen').innerHTML = '<span style="color:#FF7043">👆 Pick a number first!</span>';
+    return;
+  }
+  const reps = parseInt(fcEl('fc-reps').value);
+  const mode = fcEl('fc-order').value;
+  const pace = fcEl('fc-pace-sel').value.split(',');
+  fcThinkMs  = parseInt(pace[0]);
+  fcRevealMs = parseInt(pace[1]);
+
+  fcDeck      = fcBuildDeck(fcNum, reps, mode);
+  fcIdx       = 0;
+  fcElapsed   = 0;
+  fcRevealed  = false;
+  fcPaused    = false;
+  fcCardsSeen = 0;
+
+  fcEl('fc-table-label').textContent  = fcNum + '× table';
+  fcEl('fc-table-label').style.color  = fcColor(fcNum);
+  fcEl('fc-paused-badge').textContent = '';
+  fcEl('fc-pause-btn').textContent    = '⏸ Pause';
+
+  fcShowScreen('fc-running');
+  fcRenderCard();
+
+  if (fcInterval) clearInterval(fcInterval);
+  fcInterval = setInterval(fcTick, FC_TICK);
+}
+
+function fcRenderCard() {
+  const card = fcDeck[fcIdx];
+  fcRevealed = false;
+  fcElapsed  = 0;
+
+  fcEl('fc-problem').textContent = card.a + ' × ' + card.b;
+  fcEl('fc-problem').style.color = '#1A237E';
+  fcEl('fc-slot').innerHTML = '<div class="fc-waiting">? ? ?</div>';
+
+  const bar = fcEl('fc-pace-bar');
+  bar.classList.remove('fc-revealed');
+  bar.style.width = '0%';
+
+  fcEl('fc-count-label').textContent = 'Card ' + (fcIdx + 1) + ' of ' + fcDeck.length;
+  fcEl('fc-deck-bar').style.width = ((fcIdx / fcDeck.length) * 100) + '%';
+}
+
+function fcReveal() {
+  fcRevealed = true;
+  fcEl('fc-slot').innerHTML = '<div class="fc-answer">' + fcDeck[fcIdx].answer + '</div>';
+  fcEl('fc-pace-bar').classList.add('fc-revealed');
+}
+
+function fcTick() {
+  if (fcPaused) return;
+  fcElapsed += FC_TICK;
+  const total = fcThinkMs + fcRevealMs;
+
+  if (!fcRevealed && fcElapsed >= fcThinkMs) fcReveal();
+
+  fcEl('fc-pace-bar').style.width = Math.min(100, (fcElapsed / total) * 100) + '%';
+
+  if (fcElapsed >= total) {
+    fcCardsSeen++;
+    fcIdx++;
+    if (fcIdx >= fcDeck.length) { fcFinish(); return; }
+    fcRenderCard();
+  }
+}
+
+function fcTogglePause() {
+  fcPaused = !fcPaused;
+  fcEl('fc-pause-btn').textContent    = fcPaused ? '▶ Resume' : '⏸ Pause';
+  fcEl('fc-paused-badge').textContent = fcPaused ? '⏸ Paused — take your time' : '';
+}
+
+function fcHalt() {                       // stop the loop, leave the screen alone
+  if (fcInterval) { clearInterval(fcInterval); fcInterval = null; }
+  fcPaused = false;
+}
+
+function fcStop()  { fcHalt(); fcShowScreen('fc-setup'); }
+function fcReset() { fcHalt(); fcShowScreen('fc-setup'); }
+
+function fcFinish() {
+  fcHalt();
+  fcShowScreen('fc-done');
+  const secs = Math.round((fcCardsSeen * (fcThinkMs + fcRevealMs)) / 1000);
+  const m = Math.floor(secs / 60), s = secs % 60;
+  fcEl('fc-done-cards').textContent = fcCardsSeen;
+  fcEl('fc-done-table').textContent = fcNum + '×';
+  fcEl('fc-done-table').style.color = fcColor(fcNum);
+  fcEl('fc-done-time').textContent  = m + ':' + String(s).padStart(2, '0');
+  fcEl('fc-done-title').textContent = fcNum + '× Deck Complete!';
+  if (typeof window.launchConfetti === 'function') window.launchConfetti();
+}
+
+// ── Boot (runs after the whole page is parsed, wherever this sits) ──
+function fcInit() {
+  fcBuildNumGrid();
+  fcRegisterTab();
+  fcPatchShowTab();
+  const reps = fcEl('fc-reps');
+  if (reps) reps.addEventListener('change', fcUpdateChosenLabel);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', fcInit);
+} else {
+  fcInit();
+}
+</script>
+<!-- ═══════════ END FLASH CARD PRACTICE BOLT-ON ═══════════ -->
+
 </body>
 </html>
